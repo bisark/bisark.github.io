@@ -1,0 +1,2685 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quiz Intermedio</title>
+    <style>
+    :root {
+  color-scheme: light;
+  --bg: #f3f7f5;
+  --ink: #16211c;
+  --muted: #607169;
+  --panel: #ffffff;
+  --line: #d8e2dd;
+  --accent: #006d77;
+  --accent-dark: #064f56;
+  --good: #198754;
+  --bad: #c43d31;
+  --gold: #f3b61f;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 18% 18%, rgba(243, 182, 31, 0.22), transparent 26rem),
+    radial-gradient(circle at 82% 12%, rgba(0, 109, 119, 0.18), transparent 24rem),
+    linear-gradient(135deg, #f8fbfa 0%, var(--bg) 48%, #e7efec 100%);
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  background-image:
+    linear-gradient(rgba(22, 33, 28, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(22, 33, 28, 0.045) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent);
+  animation: drift 18s linear infinite;
+}
+
+.app-shell {
+  width: min(980px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
+
+.scorebar {
+  position: sticky;
+  top: 12px;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(216, 226, 221, 0.8);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 30px rgba(22, 33, 28, 0.08);
+}
+
+.scorebar div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f7faf9;
+}
+
+.label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.scorebar strong {
+  display: block;
+  margin-top: 3px;
+  font-size: clamp(1.1rem, 3vw, 1.45rem);
+}
+
+.quiz-stage {
+  position: relative;
+  margin-top: 42px;
+}
+
+.progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dce7e2;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+  transition: width 420ms ease;
+}
+
+.question-card,
+.result-panel {
+  position: relative;
+  overflow: hidden;
+  margin-top: 18px;
+  padding: clamp(20px, 4vw, 36px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 70px rgba(22, 33, 28, 0.12);
+}
+
+.question-card::after {
+  position: absolute;
+  right: -70px;
+  bottom: -90px;
+  width: 190px;
+  height: 190px;
+  border: 18px solid rgba(0, 109, 119, 0.1);
+  border-radius: 50%;
+  content: "";
+  animation: pulse 3.5s ease-in-out infinite;
+}
+
+.question-card.enter {
+  animation: cardIn 360ms ease both;
+}
+
+.question-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+h1 {
+  position: relative;
+  margin: 18px 0 24px;
+  font-size: clamp(1.45rem, 3.5vw, 2.35rem);
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.answers {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 12px;
+}
+
+.answer-button {
+  width: 100%;
+  min-height: 58px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fbfdfc;
+  font: inherit;
+  font-weight: 750;
+  line-height: 1.28;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.answer-button:hover:not(:disabled),
+.answer-button:focus-visible {
+  border-color: rgba(0, 109, 119, 0.45);
+  outline: none;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(0, 109, 119, 0.12);
+}
+
+.answer-button.correct {
+  border-color: rgba(25, 135, 84, 0.5);
+  background: #e7f6ee;
+  animation: pop 280ms ease;
+}
+
+.answer-button.wrong {
+  border-color: rgba(196, 61, 49, 0.55);
+  background: #fdecea;
+  animation: shake 260ms ease;
+}
+
+.answer-button:disabled {
+  cursor: default;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 22px;
+}
+
+.next-button {
+  min-width: 132px;
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--accent);
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform 180ms ease, background 180ms ease, opacity 180ms ease;
+}
+
+.next-button:hover:not(:disabled),
+.next-button:focus-visible {
+  background: var(--accent-dark);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.next-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.result-panel {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.result-panel strong {
+  color: var(--accent-dark);
+  font-size: clamp(3rem, 12vw, 6rem);
+  line-height: 1;
+}
+
+.result-kicker {
+  color: var(--muted);
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.result-panel p {
+  max-width: 46rem;
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.hidden {
+  display: none;
+}
+
+@keyframes drift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 42px 42px, 42px 42px;
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes pop {
+  50% {
+    transform: scale(1.015);
+  }
+}
+
+@keyframes shake {
+  25% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    width: min(100% - 20px, 980px);
+    padding-top: 10px;
+  }
+
+  .scorebar {
+    top: 6px;
+    grid-template-columns: 1fr;
+  }
+
+  .quiz-stage {
+    margin-top: 24px;
+  }
+}
+</style>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="scorebar" aria-label="Punteggio">
+        <div>
+          <span class="label">Totali</span>
+          <strong id="totalScore">0 / 15</strong>
+        </div>
+        <div>
+          <span class="label">Corrette</span>
+          <strong id="correctScore">0</strong>
+        </div>
+        <div>
+          <span class="label">Sbagliate</span>
+          <strong id="wrongScore">0</strong>
+        </div>
+      </header>
+
+      <section class="quiz-stage" aria-live="polite">
+        <div class="progress-track" aria-hidden="true">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+
+        <div id="questionCard" class="question-card">
+          <div class="question-meta">
+            <span id="questionCounter">Domanda 1 di 15</span>
+            <span id="sourceId">#</span>
+          </div>
+          <h1 id="questionText">Caricamento...</h1>
+          <div id="answers" class="answers"></div>
+          <div class="actions">
+            <button id="nextButton" class="next-button" type="button" disabled>Avanti</button>
+          </div>
+        </div>
+
+        <div id="resultPanel" class="result-panel hidden">
+          <span class="result-kicker">Risultato finale</span>
+          <strong id="finalGrade">0 / 30</strong>
+          <p id="finalText"></p>
+          <button id="restartButton" class="next-button" type="button">Nuovo quiz</button>
+        </div>
+      </section>
+    </main>
+
+    <script id="questions-data" type="application/json">[
+  {
+    "id": 1,
+    "question": "Broncoscopia rigida:",
+    "options": [
+      "Mantiene la pervietà delle vie aeree permettendo la ventilazione e l’ossigenazione e facilita il controllo delle complicazioni (emorragia…).",
+      "È solitamente ben tollerata da pazienti svegli o lievemente sedati.",
+      "Non consente l’uso simultaneo di vari strumenti (ottiche, aspiratori, pinze, laser, fibre…).",
+      "Non può essere utilizzata per il posizionamento di stent."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 2,
+    "question": "Broncoscopia rigida:",
+    "options": [
+      "Non può essere utilizzata per il posizionamento di stent.",
+      "È solitamente ben tollerata da pazienti svegli o lievemente sedati.",
+      "Non consente l’uso simultaneo di vari strumenti (ottiche, aspiratori, pinze, laser, fibre…).",
+      "Nessuna delle precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 3,
+    "question": "Broncoscopia rigida:",
+    "options": [
+      "Consente una facile esplorazione dell’intero albero bronchiale fino ai rami subsegmentali.",
+      "È facile e veloce da imparare.",
+      "Richiede anestesia generale.",
+      "È sempre necessaria per il campionamento dei linfonodi mediastinici tramite EBUS- TBNA."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 4,
+    "question": "Crioterapia:",
+    "options": [
+      "Si basa sull’uso di basse temperature comprese tra -80°C e -135°C per causare congelamento e successiva distruzione dei tessuti.",
+      "Non deve mai essere utilizzata per il trattamento di stenosi maligne o benigne non critiche.",
+      "È indicata per la rimozione di corpi estranei e coaguli.",
+      "Non provoca necrosi dei tessuti."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 5,
+    "question": "Coagulazione al plasma di argon (APC):",
+    "options": [
+      "È un sistema che genera un flusso di plasma di argon ionizzato e può essere utilizzato in endoscopia per trattare lesioni emorragiche.",
+      "È un sistema a contatto utilizzato in broncoscopia per coagulare e vaporizzare i tessuti.",
+      "Non può essere utilizzato in broncoscopia, ma ha ampie applicazioni in gastroscopia.",
+      "Oltre ad essere costoso, ha un effetto anche negli strati più profondi dei tessuti (>3 mm)."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 6,
+    "question": "Indicazioni per il trattamento laser includono tutte le seguenti eccetto:",
+    "options": [
+      "Trattamento della stenosi cicatriziale.",
+      "Trattamento del sanguinamento non massivo.",
+      "Trattamento delle ostruzioni neoplastiche benigne e maligne.",
+      "Trattamento del sanguinamento massivo."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 7,
+    "question": "Indicazioni per il trattamento laser includono:",
+    "options": [
+      "Trattamento della stenosi cicatriziale.",
+      "Trattamento del sanguinamento non massivo.",
+      "Trattamento delle ostruzioni neoplastiche benigne e maligne.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 8,
+    "question": "Quale delle seguenti correlazioni tra temperatura ed effetto del laser è corretta:",
+    "options": [
+      "Ipertermia = 150-200°C.",
+      "Coagulazione = 60-100°C.",
+      "Carbonizzazione = oltre 300°C.",
+      "Vaporizzazione = 41-42°C."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 9,
+    "question": "In pratica clinica, i laser più adatti per la broncoscopia interventistica sono:",
+    "options": [
+      "Nd:YAG e laser a diodi.",
+      "Tullio-YAG e laser all’argon.",
+      "Laser a coloranti e laser a CO2.",
+      "Nessuno dei precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 10,
+    "question": "Il primo riferimento da cercare durante un EUS è:",
+    "options": [
+      "Stazione linfonodale 7.",
+      "Ghiandola surrenale sinistra.",
+      "Cuore.",
+      "Fegato."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 11,
+    "question": "Quali stazioni linfonodali possono essere campionate facilmente tramite EUS:",
+    "options": [
+      "Stazioni 11R e 10R.",
+      "Stazioni 7 e 8.",
+      "Stazioni 11L e 10L.",
+      "Stazioni 5 e 6."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 12,
+    "question": "Quali strutture possono essere campionate tramite EUS:",
+    "options": [
+      "Ghiandola surrenale destra.",
+      "Stazioni 1R, 2R, 4R.",
+      "Stazioni 1L, 2L, 4L.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 13,
+    "question": "La navigazione broncoscopica elettromagnetica è un sistema di guida indicato per:",
+    "options": [
+      "Campionamento di noduli polmonari periferici.",
+      "Posizionamento di marcatori per radioterapia.",
+      "Biopsia mirata in pazienti con malattia polmonare diffusa.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 14,
+    "question": "Secondo le linee guida, quante passate sono necessarie nell’EBUS-TBNA per la stadiazione mediastinica del cancro del polmone?",
+    "options": [
+      "Almeno 3 passaggi per una singola stazione linfonodale quando non è disponibile il ROSE.",
+      "Sono sempre necessari più di 7 passaggi per una singola stazione anche con il ROSE positivo.",
+      "Solo 1 passaggio per una singola stazione linfonodale è sufficiente indipendentemente dal ROSE.",
+      "2 passaggi per una singola stazione linfonodale sono sufficienti quando guidati dall’elastografia e non è disponibile il ROSE."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 15,
+    "question": "Quali condizioni possono essere trattate con la disostruzione a palloncino?",
+    "options": [
+      "Fibrosi polmonare idiopatica (IPF) e fibrosi parenchimale polmonare (PPF).",
+      "Fibrosi cistica.",
+      "Malattia polmonare ostruttiva cronica (BPCO).",
+      "Sindrome delle apnee ostruttive del sonno (OSAS)."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 16,
+    "question": "Qual è lo scopo dell’utilizzo di metodi broncoscopici come criospray, disostruzione a palloncino e reoplastica?",
+    "options": [
+      "Ridurre il numero di cellule caliciformi iperplastiche a livello bronchiale (segmentale e subsegmentale) tramite apoptosi e promuovere la crescita di tessuto sano.",
+      "Dilatare meccanicamente i bronchi per aumentare il FEV1.",
+      "Trattare la tosse cronica tramite denervazione vagale.",
+      "Trattare lesioni preneoplastiche come i polipi sessili per impedirne la trasformazione in tumori polmonari."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 17,
+    "question": "Il trattamento della reoplastica bronchiale:",
+    "options": [
+      "Può essere eseguito senza anestesia generale.",
+      "Utilizza azoto liquido.",
+      "È più efficace dell’impianto di valvole endobronchiali.",
+      "Non può essere eseguito in pazienti con dispositivi cardiaci impiantati."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 18,
+    "question": "La denervazione polmonare endoscopica:",
+    "options": [
+      "Può essere utilizzata nel trattamento della bronchite cronica.",
+      "Riduce il tono vagale per diminuire l’ipersecrezione di muco.",
+      "Interrompe la trasmissione del sistema nervoso parasimpatico per ridurre la contrazione della muscolatura liscia delle vie aeree.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 19,
+    "question": "Rispetto agli stent metallici, gli stent endobronchiali in silicone:",
+    "options": [
+      "Hanno un’incidenza maggiore di complicazioni.",
+      "Hanno un rischio inferiore di migrazione.",
+      "Possono essere inseriti con un broncoscopio flessibile.",
+      "Sono più facilmente rimovibili anche dopo un lungo periodo."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 20,
+    "question": "Le complicazioni associate agli stent endobronchiali in silicone includono:",
+    "options": [
+      "Possibili migrazioni.",
+      "Ostruzione da secrezioni.",
+      "Formazione di granulomi.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 21,
+    "question": "Quale delle seguenti affermazioni sugli stent metallici è corretta:",
+    "options": [
+      "La rimozione può essere molto difficile e rischiosa.",
+      "Rispetto agli stent in silicone, hanno un rischio maggiore di migrazione.",
+      "Non possono essere inseriti con un broncoscopio flessibile sotto anestesia locale.",
+      "Rispetto agli stent in silicone, si adattano meno alla parete delle vie aeree."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 22,
+    "question": "In quale delle seguenti condizioni potrebbe esserci un’indicazione per il posizionamento di stent tracheobronchiali:",
+    "options": [
+      "Enfisema paraseptale.",
+      "Stenosi tracheale benigna.",
+      "Asma grave.",
+      "Fibrosi post-COVID-19."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 23,
+    "question": "Per il posizionamento di valvole endobronchiali è necessario:",
+    "options": [
+      "Misurare la ventilazione collaterale e assicurarsi dell’integrità delle scissure.",
+      "Indurre pneumotorace iatrogeno.",
+      "Garantire che il paziente sia in ossigenoterapia domiciliare.",
+      "Garantire che il paziente abbia un RV > 120%."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 24,
+    "question": "In quale delle seguenti condizioni potrebbe esserci un’indicazione per il posizionamento di valvole endobronchiali:",
+    "options": [
+      "Fistole broncoesofagee.",
+      "Pneumotorace.",
+      "Stenosi tracheobronchiale.",
+      "Enfisema polmonare."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 25,
+    "question": "Quali ulteriori indicazioni hanno le valvole endobronchiali unidirezionali:",
+    "options": [
+      "Asma bronchiale.",
+      "Stenosi bronchiale.",
+      "Perdite d’aria e fistole broncopleuriche.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 26,
+    "question": "Quale delle seguenti affermazioni sulle valvole endobronchiali unidirezionali è errata:",
+    "options": [
+      "Richiedono ventilazione collaterale per essere efficaci.",
+      "Bloccano il flusso d’aria nel segmento trattato solo.",
+      "Richiedono l’assenza di ventilazione collaterale per essere efficaci.",
+      "Sono rimovibili."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 27,
+    "question": "Quale dei seguenti è un criterio di idoneità per il posizionamento di valvole endobronchiali unidirezionali:",
+    "options": [
+      "Fumo attivo nel paziente.",
+      "FEV1 post-broncodilatazione > 45%.",
+      "Massima terapia farmacologica nel paziente.",
+      "Iperinflazione alveolare post-broncodilatazione con TLC > 125% e RV > 150%."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 28,
+    "question": "Stent endobronchiali biodegradabili:",
+    "options": [
+      "Sono realizzati esclusivamente con polimeri biodegradabili.",
+      "Esistono sia con leghe metalliche degradabili che con polimeri biodegradabili.",
+      "Sono costruiti esclusivamente con leghe metalliche degradabili.",
+      "Nessuna delle precedenti."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 29,
+    "question": "Quali dei seguenti metalli possono essere utilizzati nella costruzione di stent endobronchiali medicati antimicrobici:",
+    "options": [
+      "Argento.",
+      "Oro.",
+      "Titanio.",
+      "Rame."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 30,
+    "question": "Quali sono i vantaggi teorici dell’utilizzo di stent endobronchiali medicati:",
+    "options": [
+      "Riduzione del tessuto di granulazione periprotesico.",
+      "Ridotta colonizzazione batterica.",
+      "Stasi mucosa.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 31,
+    "question": "Rapid on-site evaluation (ROSE):",
+    "options": [
+      "Consente una diagnosi immediata della patologia.",
+      "Generalmente migliora il rendimento del TBNA, ma ne prolunga la durata.",
+      "Generalmente migliora il rendimento, riduce i tempi e le complicanze.",
+      "Non migliora il rendimento, ma riduce i tempi."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 32,
+    "question": "ROSE può essere applicata:",
+    "options": [
+      "Solo a campioni istologici.",
+      "A entrambi i tipi di campioni, ma solo se ottenuti con la tecnica di aspirazione con ago.",
+      "Solo a campioni citologici.",
+      "A entrambi i tipi di campioni."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 33,
+    "question": "Qual è la complicazione più frequente della biopsia polmonare transtoracica?",
+    "options": [
+      "Pneumotorace.",
+      "Versamento emorragico parenchimale.",
+      "Emottisi.",
+      "Embolia gassosa."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 34,
+    "question": "Qual è la complicazione più letale della biopsia polmonare transtoracica?",
+    "options": [
+      "Pneumotorace.",
+      "Versamento emorragico parenchimale.",
+      "Emottisi.",
+      "Embolia gassosa."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 35,
+    "question": "Discussione multidisciplinare:",
+    "options": [
+      "Ha un ruolo marginale nella gestione dei casi di malattia polmonare interstiziale (ILD).",
+      "Non è necessaria nei casi di UIP probabile.",
+      "Ha un ruolo centrale nella gestione dei casi di UIP/IPF.",
+      "Non è necessaria quando si esegue una criobiopsia."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 36,
+    "question": "Lung Vision (Body Vision Medical):",
+    "options": [
+      "È un sistema di navigazione e fluoroscopia aumentata.",
+      "Non richiede una TC di centratura preoperatoria.",
+      "Richiede che i noduli nei polmoni siano visibili anche con la fluoroscopia tradizionale.",
+      "Richiede sempre una broncoscopia rigida."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 37,
+    "question": "Quali organi sono più comunemente colpiti dalla sarcoidosi?",
+    "options": [
+      "Cuore e reni.",
+      "Fegato e pancreas.",
+      "Polmoni e linfonodi.",
+      "Stomaco e intestino."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 38,
+    "question": "Nella diagnosi differenziale della sarcoidosi con coinvolgimento linfonodale mediastinico, quali malattie devono essere considerate?",
+    "options": [
+      "Tubercolosi.",
+      "Malattie linfoproliferative.",
+      "Metastasi.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 39,
+    "question": "Nella diagnosi differenziale della sarcoidosi con coinvolgimento dei linfonodi mediastinici, quali malattie devono essere considerate?",
+    "options": [
+      "Tubercolosi.",
+      "Fibrosi polmonare idiopatica (IPF).",
+      "Linfangioleiomiomatosi (LAM).",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 40,
+    "question": "Qual è la caratteristica istologica della sarcoidosi?",
+    "options": [
+      "Granulomi non necrotizzanti.",
+      "Granulomi malformati.",
+      "Granulomi necrotizzanti.",
+      "Nessuna delle precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 41,
+    "question": "Nella valutazione della stenosi tracheale, cosa bisogna considerare:",
+    "options": [
+      "Posizione.",
+      "Estensione.",
+      "Gravità.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 42,
+    "question": "Qual è la causa più frequente di stenosi tracheale benigna acquisita?",
+    "options": [
+      "Malattie autoimmuni.",
+      "Intubazione orotracheale prolungata.",
+      "Post-traumatica.",
+      "Amiloidosi."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 43,
+    "question": "La causa più frequente di stenosi tracheale benigna acquisita è:",
+    "options": [
+      "Idiopatica.",
+      "Post-radiazione.",
+      "Intubazione orotracheale o tracheostomia prolungata.",
+      "Nessuna delle precedenti."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 44,
+    "question": "Tra le complicanze più frequenti delle protesi tracheobronchiali in silicone vi sono:",
+    "options": [
+      "Disfagia.",
+      "Perforazione della parete bronchiale.",
+      "Ostruzione da secrezioni.",
+      "Emottisi."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 45,
+    "question": "I linfonodi paratracheali inferiori destri sono localizzati:",
+    "options": [
+      "Posterolaterali.",
+      "Anterolaterali o mediani.",
+      "Posteriori.",
+      "Anteriori."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 46,
+    "question": "I linfonodi paratracheali inferiori sinistri sono localizzati:",
+    "options": [
+      "Posterolaterali.",
+      "Anterolaterali o mediani.",
+      "Posteriori.",
+      "Anteriori. (La stazione 4L (linfonodi paratracheali inferiori sinistri) è composta da nodi laterali rispetto al"
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 47,
+    "question": "Quale delle seguenti è un’immunoterapia utilizzata nel trattamento del NSCLC (carcinoma polmonare non a piccole cellule):",
+    "options": [
+      "Pembrolizumab.",
+      "Alectinib.",
+      "Paclitaxel.",
+      "Cisplatino."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 48,
+    "question": "Nella terapia mirata del NSCLC con mutazione EGFR, quale farmaco può essere utilizzato:",
+    "options": [
+      "Desametasone.",
+      "Osimertinib.",
+      "Trastuzumab.",
+      "Tamoxifene."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 49,
+    "question": "Lung Vision (Body Vision Medical):",
+    "options": [
+      "È un sistema di navigazione e fluoroscopia aumentata.",
+      "Utilizza un software con algoritmi di intelligenza artificiale.",
+      "Consente uno studio più preciso delle lesioni polmonari periferiche.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 50,
+    "question": "La procedura preferita per la stadiazione delle lesioni toraciche e dei linfonodi mediastinici ingrossati è:",
+    "options": [
+      "EBUS-TBNA ed EUS-FNA.",
+      "Mediastinoscopia.",
+      "Biopsia TC-guidata.",
+      "Biopsia ecoguidata."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 51,
+    "question": "Le stazioni linfonodali raggiungibili solo con EUS-FNA sono:",
+    "options": [
+      "Paraesofagei (n°8); Legamento polmonare (n°9).",
+      "Sottocarenali (n°7); Paratracheali inferiori destri (n°4R).",
+      "Ilari (n°10); Paratracheali inferiori sinistri (n°4L).",
+      "Interlobari (n°11); Paratracheali superiori destri (n°2)."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 52,
+    "question": "La sensibilità e specificità dell’EBUS-TBNA per il campionamento dei linfonodi mediastinici sono:",
+    "options": [
+      "Sensibilità circa 90%, Specificità 100%.",
+      "Sensibilità circa 15%, Specificità 10%.",
+      "Sensibilità circa 30%, Specificità 50%.",
+      "Sensibilità circa 45%, Specificità 60%."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 53,
+    "question": "Nella visione EBUS, il confine tra la stazione 4L e la stazione 10L è:",
+    "options": [
+      "Parte superiore dell’arteria polmonare sinistra.",
+      "Aorta.",
+      "Vena cava superiore.",
+      "Margine inferiore della vena azygos."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 54,
+    "question": "Nella visione EBUS, il confine tra la stazione 4R e la stazione 10R è:",
+    "options": [
+      "Margine inferiore della vena azygos.",
+      "Aorta.",
+      "Vena cava superiore.",
+      "Parte superiore dell’arteria polmonare sinistra."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 55,
+    "question": "Le caratteristiche EBUS dei linfonodi maligni sono:",
+    "options": [
+      "Dimensione > 1 cm.",
+      "Ecogenicità eterogenea.",
+      "Forma rotonda.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 56,
+    "question": "Per eseguire l’EUS-b è essenziale identificare i punti di riferimento endoscopici in un ordine specifico. La seguente sequenza dovrebbe essere seguita per identificare i punti di riferimento:",
+    "options": [
+      "Fegato → Aorta addominale → Ghiandola surrenale sinistra → 7 → 4L → 4R.",
+      "Ghiandola surrenale sinistra → Aorta addominale → Fegato → 4L → 7 → 4R.",
+      "7 → Aorta addominale → Ghiandola surrenale sinistra → Fegato → 4L → 4R.",
+      "Fegato → 4R → Ghiandola surrenale sinistra → 7 → 4L → Aorta addominale."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 57,
+    "question": "Con l’EUS-b è possibile prelevare un campione di:",
+    "options": [
+      "Metastasi alla ghiandola surrenale sinistra.",
+      "Metastasi alla ghiandola surrenale destra.",
+      "Metastasi renale.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 58,
+    "question": "Le complicazioni più comuni dell’EUS-b sono:",
+    "options": [
+      "Infezioni (mediastinite, pleurite/empiema, pericardite, sepsi, polmonite).",
+      "Emorragia.",
+      "Pneumotorace.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 59,
+    "question": "La divergenza tra la TC pre-operatoria e la TC intraoperatoria con Cone-Beam è in media:",
+    "options": [
+      "15 mm.",
+      "20 mm.",
+      "10 mm.",
+      "5 mm."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 60,
+    "question": "Scegli la risposta errata. L’EBUS radiale:",
+    "options": [
+      "È un piccolo trasduttore a ultrasuoni rotante che consente la visualizzazione delle lesioni polmonari periferiche.",
+      "Può essere utilizzato se un’aria si dirige verso la lesione bersaglio.",
+      "Consente la guida in tempo reale durante il campionamento dei tessuti.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 61,
+    "question": "Body Vision:",
+    "options": [
+      "Utilizza immagini generate da un braccio a C per consentire l’imaging intraoperatorio in tempo reale della lesione e dello strumento.",
+      "Utilizza immagini generate da una TC per consentire l’imaging intraoperatorio in tempo reale della lesione e dello strumento.",
+      "Utilizza immagini generate dall’ecografia per consentire l’imaging intraoperatorio in tempo reale della lesione e dello strumento.",
+      "Utilizza immagini generate dall’EBUS per consentire l’imaging intraoperatorio in tempo reale della lesione e dello strumento."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 62,
+    "question": "Scegli la risposta errata. L’EBUS radiale:",
+    "options": [
+      "Ha bisogno di un altro sistema di navigazione combinato per eseguire la biopsia.",
+      "Il rendimento diagnostico varia a seconda della posizione della lesione rispetto al bronco.",
+      "Può essere utilizzato con il broncoscopio ultra-sottile.",
+      "Il rendimento diagnostico migliora se il nodulo è > 2 cm."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 63,
+    "question": "Il diametro del broncoscopio ultra-sottile è di circa:",
+    "options": [
+      "3 mm.",
+      "10 mm.",
+      "15 mm.",
+      "7 mm."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 64,
+    "question": "Quali sono le caratteristiche di una lesione che aumentano la precisione diagnostica con il broncoscopio ultra-sottile?",
+    "options": [
+      "Presenza di segno del bronco.",
+      "Dimensione della lesione.",
+      "Lesione maligna.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 65,
+    "question": "È possibile utilizzare una sonda criogenica con il broncoscopio ultra-sottile?",
+    "options": [
+      "No.",
+      "Sì, utilizzando tutte le misure disponibili.",
+      "Sì, ma solo con la sonda da 1,1 mm.",
+      "Sì, ma solo con la sonda da 1,7 mm."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 66,
+    "question": "Il sistema Archimedes:",
+    "options": [
+      "Utilizza una navigazione broncoscopica virtuale per guidare l’utente tramite TBNA o BTPNA verso un nodulo indipendentemente da dimensione, posizione o segno del bronco.",
+      "Può essere utilizzato solo per noduli > 10 mm.",
+      "Può essere utilizzato solo se è presente il segno del bronco.",
+      "Può essere utilizzato solo per lesioni centrali."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 67,
+    "question": "Quali tecniche possono essere utilizzate per l’ablazione broncoscopica di una lesione:",
+    "options": [
+      "Ablazione a radiofrequenza.",
+      "Ablazione a microonde.",
+      "Crioterapia.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 68,
+    "question": "L’ablazione broncoscopica a microonde può essere offerta per trattare il cancro del polmone:",
+    "options": [
+      "In pazienti non idonei per la chirurgia.",
+      "In pazienti che rifiutano la SBRT (radioterapia stereotassica corporea).",
+      "In pazienti che rifiutano la chirurgia per motivi personali.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 69,
+    "question": "L’ablazione broncoscopica a microonde:",
+    "options": [
+      "Può essere offerta a pazienti con piccole opacità a vetro smerigliato che possono essere precancerose.",
+      "Può essere offerta solo a pazienti con lesioni > 10 mm.",
+      "Può essere offerta solo a pazienti con lesioni periferiche.",
+      "Può essere offerta solo a pazienti con lesioni centrali."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 70,
+    "question": "Durante una procedura di broncoscopia assistita da navigazione elettromagnetica, quale dei seguenti è un vantaggio chiave di questa tecnica rispetto alla navigazione visiva diretta del broncoscopio?",
+    "options": [
+      "Maggiore risoluzione delle immagini radiografiche.",
+      "Capacità di visualizzare direttamente la superficie delle vie aeree.",
+      "Maggiore precisione nel localizzare lesioni polmonari profonde.",
+      "Riduzione del tempo complessivo della procedura."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 71,
+    "question": "Il poncho wrap:",
+    "options": [
+      "Viene utilizzato per la ventilazione a pressione negativa.",
+      "Viene utilizzato per la ventilazione a pressione positiva.",
+      "Viene utilizzato per la ventilazione a getto.",
+      "Viene utilizzato per la ventilazione manuale."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 72,
+    "question": "Il poncho wrap:",
+    "options": [
+      "Consiste in un giubbotto che si adatta sopra una griglia rigida che circonda la gabbia toracica e l’addome del paziente.",
+      "È collegato a un ventilatore a pressione negativa.",
+      "Dopo l’intubazione con il broncoscopio rigido, viene sigillato strettamente al collo, braccia e gambe.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 73,
+    "question": "Le controindicazioni per la ventilazione a pressione negativa intermittente (INPV) sono:",
+    "options": [
+      "Pazienti tracheostomizzati.",
+      "Pazienti obesi.",
+      "Drenaggi toracici o addominali.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 74,
+    "question": "Scegli la risposta errata. La INPV:",
+    "options": [
+      "Previene l’apnea intraoperatoria e l’acidosi respiratoria.",
+      "Il volume corrente e la capnografia possono essere monitorati.",
+      "Influisce pesantemente sull’emodinamica del paziente.",
+      "Mantiene condizioni chirurgiche ottimali."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 75,
+    "question": "L’anestesia locale viene effettuata con:",
+    "options": [
+      "Lidocaina.",
+      "Midazolam.",
+      "Propofol.",
+      "Morfina."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 76,
+    "question": "La sedazione leggera in broncoscopia viene solitamente effettuata con:",
+    "options": [
+      "Midazolam.",
+      "Lidocaina.",
+      "Propofol.",
+      "Morfina."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 77,
+    "question": "L’antagonista per le benzodiazepine è:",
+    "options": [
+      "Lidocaina.",
+      "Naloxone.",
+      "Flumazenil.",
+      "Propofol."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 78,
+    "question": "L’antagonista per gli oppioidi è:",
+    "options": [
+      "Lidocaina.",
+      "Naloxone.",
+      "Flumazenil.",
+      "Propofol."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 79,
+    "question": "Il farmaco usato in broncoscopia per la sua azione analgesica è:",
+    "options": [
+      "Fentanyl.",
+      "Naloxone.",
+      "Midazolam.",
+      "Propofol."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 80,
+    "question": "Alcuni vantaggi del blocco cellulare per il cancro del polmone sono:",
+    "options": [
+      "Avere sezioni seriali dallo stesso campione per fare analisi molecolari.",
+      "Possibilità di archiviazione.",
+      "In caso di progressione tumorale, può essere testato con ulteriori biomarcatori.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 81,
+    "question": "Dal punto di vista istopatologico, la criobiopsia:",
+    "options": [
+      "Genera campioni di dimensioni e volume maggiori rispetto a una biopsia classica.",
+      "Genera più artefatti da schiacciamento rispetto a una biopsia classica.",
+      "Genera campioni di tessuto meno conservati rispetto a una biopsia classica.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 82,
+    "question": "Una delle limitazioni della navigazione elettromagnetica è:",
+    "options": [
+      "La divergenza tra la TC e il corpo.",
+      "Mancanza di guida in tempo reale verso la lesione.",
+      "Esposizione alle radiazioni.",
+      "Non ha limitazioni."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 83,
+    "question": "La maschera laringea:",
+    "options": [
+      "È il dispositivo di scelta quando è necessario alternare ventilazione spontanea e meccanica.",
+      "È più traumatica rispetto a un tubo laringotracheale.",
+      "Può essere utilizzata per la broncoscopia rigida.",
+      "Richiede dosi più elevate di agenti sedativi."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 84,
+    "question": "Il monitoraggio standard durante la broncoscopia include:",
+    "options": [
+      "ECG.",
+      "NIBP (pressione arteriosa non invasiva).",
+      "SpO2.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 85,
+    "question": "L’indice bispettrale:",
+    "options": [
+      "È una misura di quanto profonda è l’anestesia.",
+      "È una misura che indica la durezza di un tessuto.",
+      "È una misura che indica la dimensione di un ago.",
+      "È utile per determinare se un linfonodo è neoplastico."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": "85.1",
+    "question": "L’elastosonografia valuta:",
+    "options": [
+      "La rigidità di un tessuto.",
+      "La dimensione di un linfonodo.",
+      "La vascolarizzazione.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 86,
+    "question": "L’elastografia è basata su:",
+    "options": [
+      "Un metodo qualitativo con una scala di colori.",
+      "Il referto del citologo.",
+      "Il referto del patologo.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 87,
+    "question": "Il sistema di navigazione del robot Monarch è basato su:",
+    "options": [
+      "Riconoscimento ottico e mappa delle vie aeree derivata da TC con EMN.",
+      "Tecnologia di rilevamento della forma e mappa delle vie aeree derivata da TC.",
+      "Mappa delle vie aeree derivata da EBUS.",
+      "Mappa delle vie aeree derivata da RX."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 88,
+    "question": "Il sistema di navigazione del robot ION è basato su:",
+    "options": [
+      "Riconoscimento ottico e mappa delle vie aeree derivata da TC con EMN.",
+      "Tecnologia di rilevamento della forma e mappa delle vie aeree derivata da TC.",
+      "Mappa delle vie aeree derivata da EBUS.",
+      "Mappa delle vie aeree derivata da RX."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 89,
+    "question": "L’ecografia a scopo diagnostico:",
+    "options": [
+      "Ha una frequenza compresa tra 1,5 MHz e 20 MHz.",
+      "Ha una frequenza compresa tra 30 MHz e 50 MHz.",
+      "Ha una frequenza compresa tra 60 MHz e 100 MHz.",
+      "Ha una frequenza compresa tra 150 MHz e 300 MHz."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 90,
+    "question": "Con EBUS, il segno ottenuto dalla visualizzazione dell’arteria polmonare e dell’aorta nella stazione 4L è chiamato:",
+    "options": [
+      "Segno di Mickey Mouse.",
+      "Segno del bronco.",
+      "Segno di Hoover.",
+      "Nessuno dei precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 92,
+    "question": "Nella visualizzazione EBUS, la sequenza corretta dei punti di riferimento è:",
+    "options": [
+      "4L → 7 → 10L → 10R → Azygos → 4R.",
+      "7 → 4L → 10L → 10R → Azygos → 4R.",
+      "4L → Azygos → 7 → 10L → 10R → 4R.",
+      "10L → Azygos → 10R → 7 → 4L → 4R."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 93,
+    "question": "La criobiopsia linfonodale:",
+    "options": [
+      "Fornisce un campione di qualità migliore rispetto all’EBUS-TBNA.",
+      "Fornisce un campione di qualità inferiore rispetto all’EBUS-TBNA.",
+      "La sonda può entrare solo nella parete bronchiale.",
+      "Può essere utilizzata solo per la diagnosi di cancro ai polmoni."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 94,
+    "question": "La criobiopsia linfonodale:",
+    "options": [
+      "Viene eseguita sotto guida EBUS.",
+      "Viene eseguita senza guida EBUS.",
+      "Viene eseguita sotto guida fluoroscopica.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 95,
+    "question": "Il midazolam inizia la sua azione dopo:",
+    "options": [
+      "2-5 minuti.",
+      "30 secondi.",
+      "10 minuti.",
+      "1 ora."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 96,
+    "question": "Gli effetti collaterali del remifentanil sono:",
+    "options": [
+      "Depressione respiratoria.",
+      "Rigidità della parete toracica.",
+      "Bradicardia.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 97,
+    "question": "Propofol:",
+    "options": [
+      "È l’ipnotico più comunemente usato.",
+      "Produce una sedazione rapida (30 secondi).",
+      "Produce un rapido ritorno alle funzioni cognitive (3-5 minuti).",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 98,
+    "question": "Per una stadiazione mediastinica ottimale è necessario campionare in ordine:",
+    "options": [
+      "Stazioni N3 → N2 → N1.",
+      "Stazioni N2 → N3 → N1.",
+      "Stazioni N1 → N2 → N3.",
+      "Non c’è un ordine specifico."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 99,
+    "question": "Quale delle seguenti affermazioni è vera riguardo al ROSE (Rapid On-Site Evaluation)?",
+    "options": [
+      "ROSE è una procedura di imaging a raggi X utilizzata per diagnosticare malattie polmonari.",
+      "ROSE è un test di laboratorio che richiede pochi minuti per ottenere i risultati.",
+      "ROSE è una pratica in cui un citologo o patologo esamina immediatamente i campioni cellulari raccolti durante una broncoscopia per una valutazione preliminare.",
+      "ROSE è un termine generico che si riferisce a qualsiasi procedura broncoscopica."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 100,
+    "question": "Le complicazioni sono più probabili in quale delle seguenti procedure di terapia intensiva?",
+    "options": [
+      "Estubazione non pianificata.",
+      "Intubazione.",
+      "Gestione della cannula tracheale.",
+      "Durante la tracheotomia."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 101,
+    "question": "Secondo lo studio INTUBE, qual è la complicazione più frequente dell’intubazione?",
+    "options": [
+      "Ipossia grave.",
+      "Instabilità emodinamica.",
+      "Arresto cardiaco.",
+      "Collasso emodinamico."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 102,
+    "question": "Secondo lo studio INTUBE, quando si verificano più frequentemente le complicazioni delle procedure di terapia intensiva?",
+    "options": [
+      "Periprocedurali e durante il giorno.",
+      "Postprocedurali e durante la notte.",
+      "Postprocedurali sia di giorno che di notte.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 103,
+    "question": "Quale di queste raccomandazioni per la terapia intensiva è errata?",
+    "options": [
+      "Il monitoraggio capnografico dovrebbe essere sempre adottato.",
+      "L’attrezzatura per l’intubazione dovrebbe essere controllata quotidianamente.",
+      "Ogni reparto di terapia intensiva dovrebbe essere dotato di un carrello per intubazioni difficili.",
+      "Non è necessario standardizzare le parole e i comandi per una comunicazione efficace durante le procedure all’interno del team."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 104,
+    "question": "Qual è la definizione corretta secondo la classificazione di Mallampati?",
+    "options": [
+      "Classe 2: è visibile il palato duro.",
+      "Classe 3: sono visibili il palato molle e duro e la base dell’ugola.",
+      "Classe 1: sono visibili il palato duro e molle, la parte superiore delle tonsille e l’ugola.",
+      "Classe 4: le tonsille, l’ugola e il palato molle sono completamente visibili."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 105,
+    "question": "Quale di questi non è un fattore predittivo di intubazione difficile?",
+    "options": [
+      "Classe Mallampati III o IV.",
+      "Sindrome delle apnee ostruttive del sonno.",
+      "Mobilità ridotta della colonna cervicale.",
+      "Nessuna delle precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 106,
+    "question": "Quale delle seguenti è un’indicazione per la preossigenazione con pressione positiva continua prima di procedere con l’intubazione?",
+    "options": [
+      "Presenza di shunt.",
+      "Disventilazione/perfusione.",
+      "Capacità funzionale residua ridotta.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 107,
+    "question": "Quale delle seguenti è un’indicazione per la preossigenazione con cannula nasale ad alto flusso (HFNC)?",
+    "options": [
+      "Pazienti normossiemici con capacità funzionale residua ridotta.",
+      "Pazienti con capacità funzionale residua preservata.",
+      "Pazienti con ipossiemia grave.",
+      "In qualsiasi di questi casi."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 108,
+    "question": "Quale delle seguenti definizioni riguardanti l’uso del videolaringoscopio durante l’intubazione orotracheale è corretta?",
+    "options": [
+      "Facilita l’intubazione.",
+      "Causa più desaturazione durante la procedura.",
+      "Aumenta il tempo necessario per l’intubazione.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 109,
+    "question": "Quale delle seguenti è una complicazione immediata della tracheotomia?",
+    "options": [
+      "Sanguinamento.",
+      "Fistola tracheo-esofagea.",
+      "Tracheomalacia.",
+      "Granuloma tracheale."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 110,
+    "question": "Quale dei seguenti è un fattore predittivo di intubazione orotracheale difficile?",
+    "options": [
+      "Tubo orotracheale troppo piccolo.",
+      "Sesso maschile del paziente.",
+      "Già tentativi numerosi da parte di altri.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 111,
+    "question": "Quale dei seguenti è un sintomo indicativo di rottura tracheobronchiale?",
+    "options": [
+      "Comparsa di enfisema sottocutaneo.",
+      "Emottisi.",
+      "Dispnea.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 112,
+    "question": "Qual è l’eziologia più frequente dell’emottisi?",
+    "options": [
+      "Criptogenica.",
+      "Bronchiectasie.",
+      "Edema polmonare.",
+      "Cancro del polmone."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 113,
+    "question": "Quale delle seguenti azioni da intraprendere in caso di emottisi massiva è corretta?",
+    "options": [
+      "È necessario un monitoraggio cardio-respiratorio intensivo.",
+      "In caso di insufficienza respiratoria grave, la broncoscopia può essere ritardata.",
+      "L’applicazione di adrenalina sul sito dell’emorragia identificata è controindicata.",
+      "Per una corretta gestione della condizione, può essere utilizzato un fibrobroncoscopio con canale operativo piccolo."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 114,
+    "question": "Quale delle seguenti definizioni sull’ospedale di secondo livello è vera?",
+    "options": [
+      "Ha una popolazione di riferimento tra 600.000 e 1.000.000 di abitanti.",
+      "È dotato di DEA di livello II.",
+      "È dotato di servizi non forniti dal primo livello, come la pneumologia interventistica.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 115,
+    "question": "Qual è il diametro ideale del broncoscopio da utilizzare per le procedure in terapia intensiva?",
+    "options": [
+      "3,3 mm.",
+      "4 mm.",
+      "5,3 mm.",
+      "2,6 mm."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 116,
+    "question": "Quali sono i vantaggi delle maschere laringee?",
+    "options": [
+      "Sono facili da inserire.",
+      "Inserimento non traumatico per i tessuti.",
+      "Superano alcuni fattori anatomici che renderebbero difficile la ventilazione.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 117,
+    "question": "Quali vantaggi hanno le maschere laringee di seconda generazione rispetto a quelle di prima generazione?",
+    "options": [
+      "Possono essere utilizzate come guida per eseguire intubazioni orotracheali alla cieca.",
+      "Hanno un angolo inferiore.",
+      "Possono tollerare pressioni di ventilazione più basse.",
+      "Hanno meccanismi di maggiore tenuta e di rilevamento esofageo per l’eventuale introduzione di sonde."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 118,
+    "question": "Quale delle seguenti affermazioni è corretta riguardo alla stenosi tracheale neoplastica?",
+    "options": [
+      "È più frequente della stenosi benigna.",
+      "È meno frequente della stenosi benigna.",
+      "È classificata come endotracheale, extratracheale e mista.",
+      "B + C."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 119,
+    "question": "Quale delle seguenti è un’indicazione per eseguire una broncoscopia rigida in caso di stenosi delle grandi vie aeree?",
+    "options": [
+      "Presenza di una malattia endoluminale localmente avanzata e inoperabile.",
+      "Stenosi delle grandi vie aeree in emergenza.",
+      "Compressione ab-extrinseca e necessità di posizionare uno stent.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 120,
+    "question": "Quale delle seguenti affermazioni è vera riguardo alla stenosi subglottica complessa?",
+    "options": [
+      "Si estende per una circonferenza inferiore a 1 cm.",
+      "È associata a coinvolgimento cartilagineo.",
+      "Ha una forma che ricorda la lettera A.",
+      "A + B."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 121,
+    "question": "Qual è la complicanza più frequente degli stent endotracheali?",
+    "options": [
+      "Ostruzione.",
+      "Rottura.",
+      "Dislocazione.",
+      "A + C."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 122,
+    "question": "Quale delle seguenti affermazioni è vera sull’uso della radiografia del torace in caso di inalazione di corpo estraneo?",
+    "options": [
+      "È sempre diagnostica.",
+      "Può mostrare segni indiretti di ostruzione (atelettasia, aumento della trasparenza polmonare).",
+      "Può mostrare il corpo estraneo se è radiotrasparente.",
+      "A + B."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 123,
+    "question": "Quale delle seguenti è un’indicazione per la fibrobroncoscopia in emergenza?",
+    "options": [
+      "Stenosi delle vie aeree associata a insufficienza respiratoria e tirage.",
+      "Intubazione difficile in interventi chirurgici non procrastinabili.",
+      "Atelectasia se causa insufficienza respiratoria.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 124,
+    "question": "Nella maggior parte dei casi, il sanguinamento alla base dell’emottisi origina da:",
+    "options": [
+      "Un’arteria bronchiale",
+      "Un’arteria polmonare",
+      "Un’arteriola lobulare",
+      "Tutti i precedenti"
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 125,
+    "question": "Quale delle seguenti è un uso della fibrobroncoscopia in caso di emottisi?",
+    "options": [
+      "Trovare l’origine dell’emorragia.",
+      "Aiutare nella gestione delle vie aeree.",
+      "Implementare un trattamento temporaneo dell’emorragia.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 126,
+    "question": "Cosa sono i “COILS” utilizzati durante l’embolizzazione?",
+    "options": [
+      "Agenti particolati.",
+      "Agenti temporanei.",
+      "Agenti permanenti.",
+      "Agenti liquidi."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 127,
+    "question": "Quale delle seguenti affermazioni è vera riguardo all’embolizzazione?",
+    "options": [
+      "È utilizzata nel caso del primo episodio di emottisi lieve.",
+      "Deve essere guidata da una TC diretta.",
+      "Negli agenti “particolati”, le particelle devono avere un diametro <600 micron.",
+      "Le complicazioni sono correlate al sito di accesso, all’uso del mdc e alla procedura stessa."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 128,
+    "question": "Quali delle seguenti sono tecniche utilizzate per aumentare il rendimento diagnostico durante una procedura di EBUS-TBNA?",
+    "options": [
+      "Fanning.",
+      "Rolling.",
+      "Painting.",
+      "A + B + C."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 129,
+    "question": "Quale delle seguenti è la misura della criosonda da scegliere per eseguire una criobiopsia mediastinica guidata da EBUS?",
+    "options": [
+      "1,1 mm.",
+      "2,4 mm.",
+      "1,7 mm.",
+      "1,9 mm."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 130,
+    "question": "Quali sono le complicazioni di una biopsia parenchimale con criosonda?",
+    "options": [
+      "Emorragia.",
+      "Pneumotorace.",
+      "Pneumomediastino.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 131,
+    "question": "Puoi descrivere la sequenza della criobiopsia mediastinica guidata da EBUS?",
+    "options": [
+      "Ultrasuoni dei linfonodi - Doppler - EBUS-TBNA - creare un tunnel - Criobiopsia.",
+      "EBUS-TBNA - Creare un tunnel - Criobiopsia.",
+      "Ultrasuoni dei linfonodi - EBUS-TBNA - Criobiopsia.",
+      "Nessuna delle precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 132,
+    "question": "Quale delle seguenti non è una controindicazione per EBUS-TBNA?",
+    "options": [
+      "Infarto miocardico recente (<3 mesi).",
+      "Instabilità emodinamica.",
+      "Terapia in corso con anticoagulanti orali.",
+      "Fibrosi polmonare idiopatica."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 133,
+    "question": "Quale è vero riguardo a CELLVIZIO (piattaforma di imaging cellulare in vivo in tempo reale)?",
+    "options": [
+      "È un microscopio elettronico.",
+      "È posizionato su sonde endoscopiche.",
+      "Aumenta il rendimento diagnostico nei noduli polmonari.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 134,
+    "question": "Quali di questi sono criteri di malignità secondo il sistema CELLVIZIO?",
+    "options": [
+      "Cellule scure e pleomorfiche.",
+      "Depositi di elastina.",
+      "Flusso direzionale.",
+      "Necrosi."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 135,
+    "question": "Che tipo di procedura è considerata l’ispezione con fibrobroncoscopia?",
+    "options": [
+      "Critica.",
+      "Semicritica.",
+      "Non critica.",
+      "Sporca."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 136,
+    "question": "Qual è l’alternativa corretta riguardo ai fibrobroncoscopi monouso?",
+    "options": [
+      "Possono essere utilizzati in terapia intensiva.",
+      "Possono essere utilizzati nel pronto soccorso.",
+      "Possono essere utilizzati nei fine settimana.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 137,
+    "question": "Quale delle seguenti affermazioni riguardo ai broncoscopi monouso è errata?",
+    "options": [
+      "Non richiedono manutenzione.",
+      "Hanno costi inferiori.",
+      "Non richiedono personale dedicato.",
+      "Non hanno impatto ambientale."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 138,
+    "question": "Quale di queste affermazioni sulla PFF (fibrosi polmonare progressiva) è corretta?",
+    "options": [
+      "È un fenotipo di ILD (malattia polmonare interstiziale).",
+      "È definita da un peggioramento progressivo dei sintomi.",
+      "È definita da un peggioramento progressivo documentato tramite TC toracica e spirometria.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 139,
+    "question": "Quale delle seguenti è il trattamento per la PPF (fibrosi polmonare progressiva)?",
+    "options": [
+      "Nintedanib.",
+      "Pirfenidone.",
+      "Trattamento della patologia sottostante + Nintedanib.",
+      "Trattamento della patologia sottostante + Pirfenidone."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 140,
+    "question": "Dove avviene la discussione multidisciplinare nel flusso di lavoro per la diagnosi della malattia polmonare interstiziale?",
+    "options": [
+      "Dopo la prima valutazione con TC e spirometria.",
+      "Dopo il campionamento biopsico.",
+      "A + B.",
+      "Nel caso di IPF, è sufficiente solo la raccolta anamnestica per la diagnosi multidisciplinare."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 141,
+    "question": "Quali dei seguenti sono segni radiologici di fibrosi alla TC HRCT?",
+    "options": [
+      "Bronchiectasie da trazione.",
+      "Riduzione del volume del parenchima.",
+      "Distorsione architettonica.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 142,
+    "question": "Tra i seguenti reperti radiologici, quale può rendere meno probabile la diagnosi di fibrosi polmonare?",
+    "options": [
+      "La presenza di enfisema paraseptale.",
+      "La presenza di versamento pleurico.",
+      "La presenza di fenomeno a “honeycombing” (a nido d’ape).",
+      "La presenza di dilatazione del tronco comune dell’arteria polmonare."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 143,
+    "question": "Quale di queste affermazioni è corretta riguardo alla criobiopsia parenchimale?",
+    "options": [
+      "La dimensione di una biopsia con crioprova può arrivare fino a 5 mm di diametro.",
+      "Può essere eseguita solo in pazienti fino a 70 anni.",
+      "Può essere eseguita solo in pazienti con FEV1 > 1L.",
+      "Può essere eseguita solo con un numero totale di piastrine > 1000."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 144,
+    "question": "Quale delle seguenti non è una sindrome congenita che causa alterazioni delle vie aeree superiori?",
+    "options": [
+      "Sindrome di Franceschetti.",
+      "Sindrome di Crouzon.",
+      "Sindrome di Di George.",
+      "Sindrome di Leri-Weill."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 145,
+    "question": "Quale delle seguenti è la patologia più frequente che causa ostruzione delle vie aeree superiori nei bambini?",
+    "options": [
+      "Laringomalacia.",
+      "Laringocele.",
+      "Atresia delle coane.",
+      "Emangioma."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 146,
+    "question": "Cosa rappresenta il grado III secondo la classificazione della stenosi subglottica nei bambini?",
+    "options": [
+      "0-50%.",
+      "71-99%.",
+      "51-70%.",
+      "71-80%."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 147,
+    "question": "Quale delle seguenti affermazioni è corretta riguardo agli stent in nitinolo?",
+    "options": [
+      "Hanno una memoria di forma termica.",
+      "Causano la formazione di più granulomi rispetto a quelli in silicone.",
+      "Non sono autoespandibili.",
+      "Non sono dotati di marcatori radiografici."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 148,
+    "question": "Quale delle seguenti è la misura del diametro esterno di un broncoscopio fibroscopico che può essere utilizzato nei bambini di età compresa tra 4 e 8 anni?",
+    "options": [
+      "4 mm.",
+      "2 mm.",
+      "5,6 mm.",
+      "1,8 mm."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 149,
+    "question": "In ecografia, una lunghezza d’onda più lunga consente:",
+    "options": [
+      "Maggiore risoluzione.",
+      "Maggiore penetrazione e risoluzione.",
+      "Maggiore penetrazione e minore risoluzione.",
+      "Minore penetrazione e maggiore risoluzione."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 150,
+    "question": "Qual è il segno patognomico del pneumotorace all’ecografia toracica:",
+    "options": [
+      "Segno della tenda.",
+      "Punto polmonare.",
+      "Linee B.",
+      "Pulsazione polmonare."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 151,
+    "question": "Qual è la sonda di scelta per lo studio del versamento pleurico:",
+    "options": [
+      "Convessa.",
+      "Settore.",
+      "Lineare.",
+      "Tutte le risposte."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 152,
+    "question": "La sonda lineare non viene utilizzata per lo studio di:",
+    "options": [
+      "Parete toracica.",
+      "Pleura.",
+      "Lesioni polmonari sottopleuriche.",
+      "Linfonodi mediastinici."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 153,
+    "question": "La sonda convessa genera onde a frequenza tra:",
+    "options": [
+      "4-7 MHz.",
+      "5-13 MHz.",
+      "2-5 MHz.",
+      "2-15 MHz."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 154,
+    "question": "Con l’ecografia è possibile esplorare (paziente seduto):",
+    "options": [
+      "70% della superficie pleurica.",
+      "10% della superficie pleurica.",
+      "95% della superficie pleurica.",
+      "50% della superficie pleurica."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 155,
+    "question": "Il segno di scorrimento indica:",
+    "options": [
+      "Pneumotorace.",
+      "Versamento pleurico.",
+      "Movimento della linea pleurica.",
+      "È indicativo di insufficienza cardiaca."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 156,
+    "question": "Un polmone sano all’ecografia mostra (segna la risposta errata):",
+    "options": [
+      "Linea pleurica.",
+      "Segno di scorrimento.",
+      "Linee A.",
+      "Punto polmonare."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 157,
+    "question": "Quale delle seguenti patologie identifica la sindrome interstiziale all’ecografia toracica:",
+    "options": [
+      "Edema polmonare.",
+      "Pneumotorace.",
+      "Versamento pleurico.",
+      "Idropneumotorace."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 158,
+    "question": "Quale delle seguenti patologie identifica la sindrome alveolare all’ecografia toracica:",
+    "options": [
+      "Edema polmonare.",
+      "Fibrosi polmonare idiopatica.",
+      "Idropneumotorace.",
+      "Consolidamento."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 159,
+    "question": "Il segno ecografico è (segna la risposta errata):",
+    "options": [
+      "Anatomico e funzionale.",
+      "Qualitativo ma non quantitativo.",
+      "Ottenuto con metodi non invasivi e poco costosi.",
+      "Può essere ottenuto da qualsiasi medico."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 160,
+    "question": "Le linee B (segna la risposta errata):",
+    "options": [
+      "Rappresentano riverberazioni verticali iperecogene.",
+      "Nascono dalla linea pleurica.",
+      "Si muovono sincronicamente con lo scorrimento polmonare.",
+      "Hanno un percorso orizzontale."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 161,
+    "question": "Quali sono le caratteristiche ecografiche dell’edema polmonare acuto:",
+    "options": [
+      "Linea pleurica irregolare.",
+      "Presenza di consolidazioni bianche.",
+      "Simmetria e continuità relative.",
+      "Aree risparmiate."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 162,
+    "question": "Quale delle seguenti frasi sull’ecografia è errata:",
+    "options": [
+      "Nell’ARDS, la linea pleurica è ispessita.",
+      "La presenza di linee B può indicare la presenza di edema polmonare cardiogenico.",
+      "Il versamento pleurico è anecogeno.",
+      "Il punto polmonare è presente nel versamento pleurico."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 163,
+    "question": "La sindrome interstiziale ecografica è (segna la risposta errata):",
+    "options": [
+      "Funzionale (deflazione).",
+      "Organica.",
+      "Mista.",
+      "Nessuna delle precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 164,
+    "question": "La definizione ecografica di versamento pleurico:",
+    "options": [
+      "Spazio con omogeneità stabile tra la pleura parietale e quella viscerale che appare tipicamente completamente o predominantemente anecogeno.",
+      "Spazio con omogeneità variabile tra la pleura parietale e quella viscerale che appare tipicamente completamente o predominantemente anecogeno.",
+      "Spazio con omogeneità variabile tra la pleura parietale e quella viscerale che appare tipicamente completamente iperecogeno.",
+      "Spazio con omogeneità variabile tra la pleura parietale e quella viscerale che appare tipicamente completamente anecogeno."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 165,
+    "question": "Sulla base dell’ecogenicità interna, i versamenti pleurici sono distinti (segna la risposta errata):",
+    "options": [
+      "Anecoico.",
+      "Complesso senza setti.",
+      "Complesso con setti.",
+      "Linee B."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 166,
+    "question": "La presenza di setti all’interno del versamento pleurico è indicativa di:",
+    "options": [
+      "Trasudato.",
+      "Essudato.",
+      "Emotorace.",
+      "Pneumotorace."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 167,
+    "question": "Il liquido pleurico è un essudato se uno o più dei seguenti criteri sono soddisfatti (criteri di Light) segna la risposta errata:",
+    "options": [
+      "Il rapporto proteine del liquido pleurico su quelle sieriche è < 0,5.",
+      "Il rapporto LDH del liquido pleurico su quello sierico è > 0,6.",
+      "Il LDH del liquido pleurico è > 2/3 dei limiti superiori del valore normale di laboratorio per il LDH sierico.",
+      "Il rapporto proteine del liquido pleurico su quelle sieriche è > 0,5."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 168,
+    "question": "Indicazioni per il drenaggio toracico (segna la risposta errata):",
+    "options": [
+      "Pneumotorace teso.",
+      "Perdita d’aria a seguito di resezione polmonare.",
+      "Chilotorace.",
+      "Emotorace massivo."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 169,
+    "question": "Nell’ecografia toracica, il pneumotorace si presenta con:",
+    "options": [
+      "Assenza di scorrimento e presenza di punto polmonare.",
+      "Punto polmonare.",
+      "Assenza di scorrimento.",
+      "Nessuna delle precedenti."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 170,
+    "question": "La valvola di Heimlich è:",
+    "options": [
+      "Usata solo nel pneumotorace.",
+      "Usata in broncoscopia.",
+      "Una valvola unidirezionale.",
+      "Deve sempre essere usata nel drenaggio toracico."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 171,
+    "question": "Quando sono più frequenti le pleuriti infettive?",
+    "options": [
+      "Bambini.",
+      "Anziani.",
+      "Bambini e anziani.",
+      "Tutte le età."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 172,
+    "question": "Quale dei seguenti agenti infettivi è il più responsabile della polmonite comunitaria in Europa?",
+    "options": [
+      "Gram negativi.",
+      "Gram positivi.",
+      "Parassiti.",
+      "Virus."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 173,
+    "question": "Quale delle seguenti condizioni non richiede sempre il posizionamento di un drenaggio toracico:",
+    "options": [
+      "Empiema.",
+      "Emotorace.",
+      "Versamento pleurico parapneumonico complicato.",
+      "Versamento da insufficienza cardiaca."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 174,
+    "question": "Quale delle seguenti affermazioni è errata:",
+    "options": [
+      "C’è una differenza in termini di risultati clinici tra drenaggio toracico a piccolo calibro e a grande calibro.",
+      "Il drenaggio toracico può essere posizionato sia sotto guida ecografica sia TC- guidata.",
+      "Un versamento pleurico con pH < 7,2 è definito come parapneumonico complicato.",
+      "L’empiema è la presenza di pus nella cavità pleurica."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 175,
+    "question": "Quale dei seguenti parametri è il miglior predittore della necessità di posizionare un drenaggio toracico? (segna la risposta errata):",
+    "options": [
+      "pH < 7,20.",
+      "Glucosio < 40 mg/dL.",
+      "LDH > 1.000 UI/L.",
+      "Tutti i precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 176,
+    "question": "Secondo le ultime linee guida internazionali, quale fibrinolitico riduce la necessità di intervento chirurgico nelle infezioni pleuriche avanzate?",
+    "options": [
+      "Urochinasi.",
+      "Streptochinasi.",
+      "Alteplase (t-PA).",
+      "Alteplase (t-PA) + DNAse."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 177,
+    "question": "Nei pazienti con versamento pleurico complicato, la terapia fibrinolitica deve essere somministrata:",
+    "options": [
+      "< 24 ore dopo il posizionamento del drenaggio toracico.",
+      "< 48 ore dopo il posizionamento del drenaggio toracico.",
+      "Immediatamente dopo il posizionamento del drenaggio toracico.",
+      "Non dovrebbe mai essere somministrata."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 178,
+    "question": "Cosa fa la toracoscopia medica (segna la risposta errata):",
+    "options": [
+      "Pleuroscopia.",
+      "Biopsia pleurica.",
+      "Biopsia polmonare.",
+      "Pleurodesi."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 179,
+    "question": "Quale delle seguenti non è una tipologia di pleurodesi:",
+    "options": [
+      "Somministrazione di agente sclerosante dopo rimozione del liquido nella cavità pleurica.",
+      "Lesione diretta della pleura (abrasione pleurica, pleurectomia, decorticazione).",
+      "Somministrazione di alteplase nella cavità pleurica.",
+      "Pleurodesi legata a catetere pleurico permanente (IPC)."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 180,
+    "question": "Quali sono le indicazioni per la pleurodesi (segna la risposta errata):",
+    "options": [
+      "Versamento pleurico maligno ricorrente sintomatico.",
+      "Versamento non maligno refrattario.",
+      "Pneumotorace.",
+      "Consolidamento polmonare."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 181,
+    "question": "Quale delle seguenti sostanze può essere utilizzata per eseguire una pleurodesi (segna la risposta errata):",
+    "options": [
+      "Talco.",
+      "Iodopovidone.",
+      "Superantigene stafilococcico (SSA).",
+      "Alteplase (t-PA)."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 182,
+    "question": "Quale delle seguenti affermazioni è errata?",
+    "options": [
+      "Il versamento pleurico maligno deve sempre essere trattato.",
+      "Il drenaggio toracico è sempre indicato nel trattamento dell’empiema pleurico.",
+      "I drenaggi toracici a piccolo e grande calibro possono essere usati indiscriminatamente nel trattamento del versamento parapneumonico complicato.",
+      "La fibrinolisi deve essere somministrata entro <48 ore dopo il posizionamento del drenaggio toracico."
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": 183,
+    "question": "La pleurodesi è raccomandata nel trattamento definitivo del versamento pleurico maligno quando:",
+    "options": [
+      "Non c’è miglioramento della dispnea dopo toracentesi.",
+      "C’è una riespansione polmonare dopo toracentesi.",
+      "La terapia oncologica sistemica non è ancora stata somministrata.",
+      "Il paziente ha un’aspettativa di vita limitata."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 184,
+    "question": "Qual è la condizione di un polmone non espandibile dopo la toracentesi:",
+    "options": [
+      "Restrizione viscerale.",
+      "Ostruzione endobronchiale.",
+      "Fibrotorace.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 185,
+    "question": "Qual è la dose di talco utilizzata nella pleurodesi?",
+    "options": [
+      "1-2 g.",
+      "4-5 g.",
+      "8-9 g.",
+      "12-13 g."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 186,
+    "question": "Qual è il tasso di successo della pleurodesi con talco?",
+    "options": [
+      "20-30%.",
+      "40-50%.",
+      "70-100%.",
+      "50-60%."
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": 187,
+    "question": "Quale delle seguenti complicanze è la meno comune nella pleurodesi?",
+    "options": [
+      "Febbre.",
+      "Dolore.",
+      "Leggera infiammazione sistemica.",
+      "Empiema."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 188,
+    "question": "Quale delle seguenti non è un predittore di successo della pleurodesi:",
+    "options": [
+      "Breve intervallo di tempo tra la diagnosi del versamento pleurico e il trattamento (< 30 giorni).",
+      "Aumento della proteina C-reattiva nel siero.",
+      "< 200 ml/die drenati prima della sospensione di talco.",
+      "Terapia steroidea."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 189,
+    "question": "Cosa si intende per asma difficile da trattare?",
+    "options": [
+      "Asma in un paziente con setto nasale deviato.",
+      "Asma che richiede dosi massimali di steroidi inalatori e/o sistemici.",
+      "Asma che non tollera la riduzione graduale della terapia.",
+      "Nessuna delle precedenti."
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": 190,
+    "question": "Quali delle seguenti sono comorbidità comunemente associate all’asma?",
+    "options": [
+      "Reflusso gastroesofageo.",
+      "Atopia.",
+      "Rinite.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 191,
+    "question": "Quale delle seguenti affermazioni è vera riguardo ai Passaggi delle linee guida GINA 2023?",
+    "options": [
+      "PASSAGGIO 4: basso dosaggio di ICS (corticosteroidi inalatori) - Formoterolo per mantenimento.",
+      "PASSAGGIO 5: ICS al bisogno.",
+      "PASSAGGIO 2: ICS-Formoterolo al bisogno.",
+      "PASSAGGIO 5: aggiungi LAMA/considera un alto dosaggio di ICS per mantenimento/aggiungi anti-IgE/IL5/IL5R."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 192,
+    "question": "Qual è l’alternativa corretta riguardo all’Omalizumab?",
+    "options": [
+      "Anti IL2.",
+      "Anti IL4.",
+      "Anti IL5.",
+      "Anti IgE."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 193,
+    "question": "Qual è l’opzione corretta riguardo all’Omalizumab?",
+    "options": [
+      "FENO e IgE circolanti sono marcatori di risposta al trattamento.",
+      "È sicuro in gravidanza.",
+      "È indicato in pazienti atopici.",
+      "Tutte le precedenti sono corrette."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 194,
+    "question": "Qual è l’opzione corretta riguardo al Dupilumab?",
+    "options": [
+      "Anti IL4/IL13.",
+      "Indicato nell’asma a insorgenza tardiva.",
+      "Alti livelli di FENO sono un predittore di buona risposta al trattamento.",
+      "Tutte le precedenti sono corrette."
+    ],
+    "correctIndex": 3
+  },
+  {
+    "id": 195,
+    "question": "Qual è l’alternativa corretta riguardo alla termoplastica bronchiale?",
+    "options": [
+      "Il catetere Alair è un tubo flessibile con una serie di fili espandibili all’estremità.",
+      "Riduce l’eccesso di muscolatura liscia delle vie aeree.",
+      "Riduce i sintomi dell’asma.",
+      "Tutte le precedenti."
+    ],
+    "correctIndex": 3
+  }
+]</script>
+    <script>
+    const QUIZ_SIZE = 31;
+
+const state = {
+  allQuestions: [],
+  questions: [],
+  currentIndex: 0,
+  correct: 0,
+  wrong: 0,
+  answered: false,
+  advanceTimer: null,
+};
+
+const totalScore = document.querySelector("#totalScore");
+const correctScore = document.querySelector("#correctScore");
+const wrongScore = document.querySelector("#wrongScore");
+const progressBar = document.querySelector("#progressBar");
+const questionCard = document.querySelector("#questionCard");
+const questionCounter = document.querySelector("#questionCounter");
+const sourceId = document.querySelector("#sourceId");
+const questionText = document.querySelector("#questionText");
+const answers = document.querySelector("#answers");
+const nextButton = document.querySelector("#nextButton");
+const resultPanel = document.querySelector("#resultPanel");
+const finalGrade = document.querySelector("#finalGrade");
+const finalText = document.querySelector("#finalText");
+const restartButton = document.querySelector("#restartButton");
+
+function shuffle(items) {
+  return [...items]
+    .map((item) => ({ item, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ item }) => item);
+}
+
+function startQuiz() {
+  state.questions = shuffle(state.allQuestions).slice(0, QUIZ_SIZE);
+  state.currentIndex = 0;
+  state.correct = 0;
+  state.wrong = 0;
+  state.answered = false;
+  resultPanel.classList.add("hidden");
+  questionCard.classList.remove("hidden");
+  renderQuestion();
+}
+
+function updateScore() {
+  const answered = state.correct + state.wrong;
+  totalScore.textContent = `${answered} / ${QUIZ_SIZE}`;
+  correctScore.textContent = state.correct;
+  wrongScore.textContent = state.wrong;
+  progressBar.style.width = `${(answered / QUIZ_SIZE) * 100}%`;
+}
+
+function renderQuestion() {
+  const question = state.questions[state.currentIndex];
+  state.answered = false;
+  clearTimeout(state.advanceTimer);
+  nextButton.disabled = true;
+  nextButton.textContent = state.currentIndex === QUIZ_SIZE - 1 ? "Risultato" : "Avanti";
+
+  questionCard.classList.remove("enter");
+  void questionCard.offsetWidth;
+  questionCard.classList.add("enter");
+
+  questionCounter.textContent = `Domanda ${state.currentIndex + 1} di ${QUIZ_SIZE}`;
+  sourceId.textContent = `#${question.id}`;
+  questionText.textContent = question.question;
+  answers.innerHTML = "";
+
+  question.options.forEach((option, index) => {
+    const button = document.createElement("button");
+    button.className = "answer-button";
+    button.type = "button";
+    button.textContent = option;
+    button.addEventListener("click", () => selectAnswer(index));
+    answers.append(button);
+  });
+
+  updateScore();
+}
+
+function selectAnswer(selectedIndex) {
+  if (state.answered) {
+    return;
+  }
+
+  state.answered = true;
+  const question = state.questions[state.currentIndex];
+  const buttons = [...answers.querySelectorAll(".answer-button")];
+
+  buttons.forEach((button) => {
+    button.disabled = true;
+  });
+
+  buttons[question.correctIndex].classList.add("correct");
+
+  if (selectedIndex === question.correctIndex) {
+    state.correct += 1;
+  } else {
+    state.wrong += 1;
+    buttons[selectedIndex].classList.add("wrong");
+  }
+
+  nextButton.disabled = false;
+  updateScore();
+  state.advanceTimer = setTimeout(goNext, 900);
+}
+
+function showResults() {
+  const grade = Math.round((state.correct / QUIZ_SIZE) * 30);
+  questionCard.classList.add("hidden");
+  resultPanel.classList.remove("hidden");
+  finalGrade.textContent = `${grade} / 30`;
+  finalText.textContent = `Hai risposto correttamente a ${state.correct} domande su ${QUIZ_SIZE}. Errori: ${state.wrong}.`;
+  progressBar.style.width = "100%";
+}
+
+function goNext() {
+  clearTimeout(state.advanceTimer);
+  if (state.currentIndex < QUIZ_SIZE - 1) {
+    state.currentIndex += 1;
+    renderQuestion();
+  } else {
+    showResults();
+  }
+}
+
+nextButton.addEventListener("click", goNext);
+
+restartButton.addEventListener("click", startQuiz);
+
+function bootQuiz(questions) {
+  state.allQuestions = questions;
+  startQuiz();
+}
+
+function loadEmbeddedQuestions() {
+  const embedded = document.querySelector("#questions-data");
+  if (!embedded || !embedded.textContent.trim()) {
+    return null;
+  }
+
+  const questions = JSON.parse(embedded.textContent);
+  return Array.isArray(questions) && questions.length > 0 ? questions : null;
+}
+
+const embeddedQuestions = loadEmbeddedQuestions();
+
+if (embeddedQuestions) {
+  bootQuiz(embeddedQuestions);
+} else {
+  fetch("questions.json")
+  .then((response) => {
+    if (!response.ok) {
+      throw new Error("Impossibile caricare questions.json");
+    }
+    return response.json();
+  })
+  .then((questions) => {
+    bootQuiz(questions);
+  })
+  .catch((error) => {
+    questionText.textContent = error.message;
+  });
+}
+</script>
+  </body>
+</html>
